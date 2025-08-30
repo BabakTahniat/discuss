@@ -1,27 +1,15 @@
-import { Button } from '@heroui/button';
-import * as actions from '@/actions';
-import { auth } from '@/auth';
-import Profile from '@/components/profile';
+import TopicCreateForm from '@/components/topics/topic-create-form';
 
-export default async function Home() {
-    const session = await auth();
+export default function Home() {
     return (
-        <div>
-            <Profile />
+        <main className="grid grid-cols-4 gap-4 p-4">
+            <div className="col-span-3">
+                <h1 className="text-xl m-2">Top Posts</h1>
+            </div>
 
-            <form action={actions.signIn}>
-                <Button type="submit">Sign in</Button>
-            </form>
-            {session?.user ? (
-                <div>
-                    user {JSON.stringify(session.user, null, 2)} logged in
-                </div>
-            ) : (
-                <div>User logged out</div>
-            )}
-            <form action={actions.signOut}>
-                <Button type="submit">Sign out</Button>
-            </form>
-        </div>
+            <div>
+                <TopicCreateForm />
+            </div>
+        </main>
     );
 }
