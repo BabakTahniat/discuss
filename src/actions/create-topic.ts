@@ -1,6 +1,17 @@
 'use server';
+import { auth } from '@/auth';
 import db from '@/db';
 import { z } from 'zod';
+import { Topic } from '@/generated/prisma';
+import { redirect } from 'next/navigation';
+import paths from '@/paths';
+import { revalidatePath } from 'next/cache';
+
+type CreateTopicFormState = {
+    name?: { errors: string[] } | undefined;
+    description?: { errors: string[] } | undefined;
+    _form?: string[];
+};
 
 const TopicSchema = z.object({
     name: z
@@ -14,24 +25,41 @@ const TopicSchema = z.object({
         .min(10, { error: 'Description must be at least 10 characters' }),
 });
 
-interface CreateTopicFomState {
-    name?: { errors: string[] };
-    description?: { errors: string[] };
-}
-
 export async function createTopic(
-    formState: CreateTopicFomState,
+    actionState: CreateTopicFormState,
     formData: FormData,
-): Promise<CreateTopicFomState> {
+): Promise<CreateTopicFormState> {
     const data = Object.fromEntries(formData.entries());
     const result = TopicSchema.safeParse(data);
 
     if (!result.success) {
-        console.log(z.treeifyError(result.error).properties);
-        return z.treeifyError(result.error).properties as CreateTopicFomState;
+        console.log(result.error);
+        return z.treeifyError(result.error).properties as CreateTopicFormState;
     }
-    return {};
 
-    // await db.topic.create({ data: { description, slug } });
-    //TODO: revalidate home page
+    const session = await auth();
+    if (!session || !session.user)
+        return { _form: ['You must be signed in to do this'] };
+
+    let topic: Topic;
+    try {
+        // artificial delay
+        // await new Promise((resolve) => setTimeout(resolve, 2500));
+
+        topic = await db.topic.create({
+            data: {
+                slug: result.data.name,
+                description: result.data.description,
+            },
+        });
+    } catch (err: unknown) {
+        if (err instanceof Error) {
+            return { _form: [err.message] };
+        } else {
+            return { _form: ['Something went wrong'] };
+        }
+    }
+
+    revalidatePath('/');
+    redirect(paths.topicShow(topic.slug));
 }
